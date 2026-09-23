@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>K3SManager.Web</RootNamespace>
+    <UserSecretsId>k3smanager-web-9d1c0e2a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <ProjectReference Include="..\K3SManager.Core\K3SManager.Core.csproj" />
+    <ProjectReference Include="..\K3SManager.Data\K3SManager.Data.csproj" />
+    <ProjectReference Include="..\K3SManager.Kubernetes\K3SManager.Kubernetes.csproj" />
+  </ItemGroup>
+
+  <!-- The host registers the CodedThought.Core provider, so it references it directly. -->
+  <ItemGroup>
+    <PackageReference Include="CodedThought.Core" />
+    <PackageReference Include="CodedThought.Core.Configuration" />
+    <PackageReference Include="CodedThought.Core.Data.MySql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="CodedThought.Core.Configuration" />
+    <Using Include="CodedThought.Core.Data" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+{
+  "CoreSettings": {
+    "Settings": {
+      "WINFORM": "false",
+      "ApplicationCookieName": "K3SManager"
+    },
+    "Connections": {
+      "MYSQL": {
+        "Name": "DATA_K3SMANAGER",
+        "Primary": true,
+        "ProviderType": "MySql",
+        "ProviderName": "MySqlConnector",
+        "DefaultSchema": "",
+        "ConnectionString": "",
+        "Timeout": 30
+      }
+    }
+  }
+}

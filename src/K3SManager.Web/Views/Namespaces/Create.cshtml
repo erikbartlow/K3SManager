@@ -1,0 +1,73 @@
+@model NamespaceCreateModel
+@{
+    ViewData["Title"] = "New namespace";
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Namespaces</p>
+        <h1>New namespace</h1>
+        <p>Names follow RFC 1123: lower-case letters, digits and dashes.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost" asp-action="Index">Cancel</a>
+    </div>
+</div>
+
+<div class="grid grid--halves">
+    <section class="card">
+        <div class="card__head"><h2>Details</h2></div>
+        <div class="card__body">
+            <form admin-only method="post" asp-action="Create">
+                <div asp-validation-summary="All" class="validation"></div>
+
+                <div class="field">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" autocomplete="off" placeholder="team-analytics" />
+                    <span asp-validation-for="Name" class="validation"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Labels"></label>
+                    <textarea asp-for="Labels" placeholder="app.kubernetes.io/part-of=platform&#10;team=analytics"></textarea>
+                    <span class="hint">One <code>key=value</code> per line.</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="field">
+                        <label asp-for="Owner"></label>
+                        <input asp-for="Owner" autocomplete="off" />
+                    </div>
+                    <div class="field">
+                        <label asp-for="Environment"></label>
+                        <input asp-for="Environment" autocomplete="off" placeholder="production" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Description"></label>
+                    <input asp-for="Description" autocomplete="off" />
+                    <span class="hint">Owner, environment and description are stored by this app, not in the cluster.</span>
+                </div>
+
+                <button class="btn" type="submit">Create namespace</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card__head"><h2>What happens</h2></div>
+        <div class="card__body">
+            <dl class="kv">
+                <dt>In the cluster</dt>
+                <dd>A <code>Namespace</code> object is created with the labels above.</dd>
+                <dt>In this app</dt>
+                <dd>Owner, environment and description are written to <code>NamespaceProfile</code>.</dd>
+                <dt>Quotas</dt>
+                <dd>Set them on the namespace page once it exists.</dd>
+                <dt>Audit</dt>
+                <dd>The create is recorded in <code>AuditLog</code> whether it succeeds or fails.</dd>
+            </dl>
+        </div>
+    </section>
+</div>

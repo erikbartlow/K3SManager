@@ -1,0 +1,249 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Overview";
+    ViewData["RefreshSeconds"] = Model.RefreshSeconds;
+    ViewData["ClusterName"] = Model.Cluster.DisplayName;
+    var c = Model.Cluster;
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Cluster</p>
+        <h1>@c.DisplayName</h1>
+        <p>
+            @c.KubeletVersion
+            @if (c.HasMixedVersions)
+            {
+                <span class="pill is-warn">mixed versions</span>
+            }
+            &middot; @c.NodeCount node(s) &middot; @c.NamespaceCount namespace(s)
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a admin-only class="btn btn--ghost" asp-controller="Nodes" asp-action="Join">Add a worker node</a>
+        <a admin-only class="btn" asp-controller="Namespaces" asp-action="Create">New namespace</a>
+    </div>
+</div>
+
+@if (!Model.PersistenceEnabled)
+{
+    <div class="alert alert--info">
+        <span>
+            Running without a database. Settings, namespace metadata and the audit trail are unavailable &mdash;
+            enable <code>Data:Enabled</code> and configure a connection under
+            <code>CoreSettings:Connections</code> in appsettings.json. Set
+            <code>Data:ConnectionName</code> to its <code>Name</code>, or leave it empty
+            to use the connection marked <code>Primary</code>. Restart the application after updating these settings.
+        </span>
+    </div>
+}
+
+<div class="grid grid--stats" style="margin-bottom:16px">
+    <div class="stat">
+        <div class="stat__label">Nodes ready</div>
+        <div class="stat__value">@c.NodesReady<small> / @c.NodeCount</small></div>
+        <div class="stat__note">
+            @if (c.NodesUnschedulable > 0)
+            {
+                <span class="pill is-warn">@c.NodesUnschedulable cordoned</span>
+            }
+            else
+            {
+                <span>@c.ControlPlaneCount control-plane</span>
+            }
+        </div>
+    </div>
+
+    <div class="stat">
+        <div class="stat__label">Pods running</div>
+        <div class="stat__value">@c.PodsRunning<small> / @c.PodCount</small></div>
+        <div class="stat__note">
+            @if (c.PodsPending > 0)
+            {
+                <span class="pill is-warn">@c.PodsPending pending</span>
+            }
+            @if (c.PodsFailed > 0)
+            {
+                <span class="pill is-danger">@c.PodsFailed failed</span>
+            }
+            @if (c.PodsPending == 0 && c.PodsFailed == 0)
+            {
+                <span class="pill is-ok"><span class="pill__dot"></span>all healthy</span>
+            }
+        </div>
+    </div>
+
+    <div class="stat">
+        <div class="stat__label">CPU requested</div>
+        <div class="stat__value">@ViewHelpers.Percent(c.CpuCommitPercent)</div>
+        <div class="meter">
+            <div class="meter__fill @ViewHelpers.PressureClass(c.CpuCommitPercent)" style="width:@(Math.Min(c.CpuCommitPercent, 100))%"></div>
+        </div>
+        <div class="stat__note">@ViewHelpers.Cores(c.CpuRequestedCores) of @ViewHelpers.Cores(c.CpuCapacityCores) allocatable</div>
+    </div>
+
+    <div class="stat">
+        <div class="stat__label">Memory requested</div>
+        <div class="stat__value">@ViewHelpers.Percent(c.MemoryCommitPercent)</div>
+        <div class="meter">
+            <div class="meter__fill @ViewHelpers.PressureClass(c.MemoryCommitPercent)" style="width:@(Math.Min(c.MemoryCommitPercent, 100))%"></div>
+        </div>
+        <div class="stat__note">@ViewHelpers.GiB(c.MemoryRequestedGiB) of @ViewHelpers.GiB(c.MemoryCapacityGiB) allocatable</div>
+    </div>
+</div>
+
+<div class="grid grid--halves">
+    <section class="card">
+        <div class="card__head">
+            <h2>Nodes</h2>
+            <a class="btn btn--quiet btn--sm" asp-controller="Nodes" asp-action="Index">All nodes</a>
+        </div>
+        <div class="card__body card__body--flush table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Roles</th>
+                        <th class="num">Pods</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var node in Model.Nodes)
+                {
+                    <tr>
+                        <td><a asp-controller="Nodes" asp-action="Details" asp-route-name="@node.Name">@node.Name</a></td>
+                        <td>
+                            <span class="pill @(node.IsReady ? (node.IsUnschedulable ? "is-warn" : "is-ok") : "is-danger")">
+                                <span class="pill__dot"></span>@node.Status
+                            </span>
+                        </td>
+                        <td><span class="tag">@node.Roles</span></td>
+                        <td class="num">@node.PodCount</td>
+                        <td>
+                            <span class="meter meter--inline">
+                                <span class="meter__fill @ViewHelpers.PressureClass(node.CpuCommitPercent)" style="display:block;width:@(Math.Min(node.CpuCommitPercent, 100))%"></span>
+                            </span>
+                            <span class="mono">@ViewHelpers.Percent(node.CpuCommitPercent)</span>
+                        </td>
+                        <td>
+                            <span class="meter meter--inline">
+                                <span class="meter__fill @ViewHelpers.PressureClass(node.MemoryCommitPercent)" style="display:block;width:@(Math.Min(node.MemoryCommitPercent, 100))%"></span>
+                            </span>
+                            <span class="mono">@ViewHelpers.Percent(node.MemoryCommitPercent)</span>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card__head">
+            <h2>Namespaces</h2>
+            <a class="btn btn--quiet btn--sm" asp-controller="Namespaces" asp-action="Index">All namespaces</a>
+        </div>
+        <div class="card__body card__body--flush table-wrap">
+            @if (Model.Namespaces.Count == 0)
+            {
+                <div class="empty"><strong>No user namespaces</strong>Everything here is a system namespace.</div>
+            }
+            else
+            {
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Owner</th>
+                            <th class="num">Pods</th>
+                            <th class="num">CPU</th>
+                            <th class="num">Memory</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var ns in Model.Namespaces.Take(12))
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Namespaces" asp-action="Details" asp-route-name="@ns.Name">@ns.Name</a>
+                                @if (ns.HasProblems)
+                                {
+                                    <span class="pill is-warn">@ns.PodsNotReady not ready</span>
+                                }
+                            </td>
+                            <td>@(ns.Profile?.Owner ?? "-")</td>
+                            <td class="num">@ns.PodCount</td>
+                            <td class="num mono">@ViewHelpers.Cores(ns.CpuRequestedCores)</td>
+                            <td class="num mono">@ViewHelpers.GiB(ns.MemoryRequestedGiB)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </section>
+</div>
+
+<div class="grid grid--halves" style="margin-top:16px">
+    <section class="card">
+        <div class="card__head"><h2>Recent warnings</h2></div>
+        <div class="card__body card__body--flush table-wrap">
+            @if (c.RecentWarnings.Count == 0)
+            {
+                <div class="empty"><strong>Nothing to report</strong>No warning events in the cluster right now.</div>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>Object</th><th>Reason</th><th>Message</th><th class="num">Count</th></tr></thead>
+                    <tbody>
+                    @foreach (var e in c.RecentWarnings)
+                    {
+                        <tr>
+                            <td class="mono">@e.Namespace/@e.ObjectName</td>
+                            <td><span class="pill is-warn">@e.Reason</span></td>
+                            <td>@ViewHelpers.Clip(e.Message, 90)</td>
+                            <td class="num">@e.Count</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card__head">
+            <h2>Recent actions</h2>
+            <a class="btn btn--quiet btn--sm" asp-controller="Settings" asp-action="Index">Full audit</a>
+        </div>
+        <div class="card__body card__body--flush table-wrap">
+            @if (Model.RecentActions.Count == 0)
+            {
+                <div class="empty"><strong>No actions yet</strong>Anything you change here is recorded.</div>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>When</th><th>Action</th><th>Target</th><th>By</th></tr></thead>
+                    <tbody>
+                    @foreach (var entry in Model.RecentActions)
+                    {
+                        <tr>
+                            <td class="mono">@ViewHelpers.Age(DateTime.UtcNow - entry.CreatedUtc) ago</td>
+                            <td>
+                                <span class="pill @(entry.Succeeded ? "is-ok" : "is-danger")">@entry.Action</span>
+                            </td>
+                            <td class="mono">@entry.TargetKind/@entry.TargetName</td>
+                            <td>@entry.ActorName</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </section>
+</div>

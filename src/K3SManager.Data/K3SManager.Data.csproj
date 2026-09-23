@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>K3SManager.Data</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!--
+    CodedThought.Core is the ORM. If these versions are not on nuget.org yet, swap the three
+    PackageReferences for ProjectReferences into the sibling repo:
+      ..\..\..\CodedThought.Core\CodedThought.Core\CodedThought.Core\CodedThought.Core.csproj
+      ..\..\..\CodedThought.Core\CodedThought.Core\CodedThought.Core.Configuration\CodedThought.Core.Configuration.csproj
+      ..\..\..\CodedThought.Core\CodedThought.Core.Data.MySql\CodedThought.Core.Data.MySql.csproj
+  -->
+  <ItemGroup>
+    <PackageReference Include="CodedThought.Core" />
+    <PackageReference Include="CodedThought.Core.Configuration" />
+    <PackageReference Include="CodedThought.Core.Data.MySql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\K3SManager.Core\K3SManager.Core.csproj" />
+  </ItemGroup>
+
+  <!-- CodedThought.Core scans for this attribute when it builds the ORM map from the entities. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="CodedThought.Core.Data.DataAwareAssemblyAttribute">
+      <_Parameter1>True</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

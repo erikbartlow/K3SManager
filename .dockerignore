@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+.git/
+.vs/
+**/appsettings.Development.json
+**/appsettings.Local.json
+_removed/

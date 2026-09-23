@@ -1,0 +1,92 @@
+@model NodeJoinViewModel
+@{
+    ViewData["Title"] = "Add a worker node";
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Nodes</p>
+        <h1>Add a worker node</h1>
+        <p>
+            Kubernetes has no API for adding a machine &mdash; a node joins by starting the k3s agent against
+            the server. Fill in what you want the node to look like and run the command on the machine.
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost" asp-action="Index">All nodes</a>
+    </div>
+</div>
+
+<div class="grid grid--halves">
+    <section class="card">
+        <div class="card__head"><h2>Node shape</h2></div>
+        <div class="card__body">
+            <form admin-only method="post" asp-action="Join">
+                <div asp-validation-summary="All" class="validation"></div>
+
+                <div class="field">
+                    <label asp-for="NodeName"></label>
+                    <input asp-for="NodeName" autocomplete="off" placeholder="pi-worker-04" />
+                    <span class="hint">Leave empty to use the machine's hostname.</span>
+                    <span asp-validation-for="NodeName" class="validation"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Labels"></label>
+                    <textarea asp-for="Labels" placeholder="node-role.kubernetes.io/worker=true&#10;topology.kubernetes.io/zone=rack-a"></textarea>
+                    <span class="hint">One <code>key=value</code> per line.</span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Taints"></label>
+                    <textarea asp-for="Taints" placeholder="workload=storage:NoSchedule"></textarea>
+                    <span class="hint">One <code>key=value:Effect</code> per line.</span>
+                </div>
+
+                <button class="btn" type="submit">Build join command</button>
+            </form>
+        </div>
+    </section>
+
+    <div class="stack">
+        @if (Model.Instruction is not null)
+        {
+            @if (!string.IsNullOrEmpty(Model.Instruction.Warning))
+            {
+                <div class="alert alert--warning">
+                    <span>@Model.Instruction.Warning</span>
+                </div>
+            }
+
+            <section class="card">
+                <div class="card__head">
+                    <h2>Run this on the new machine</h2>
+                    <button class="btn btn--quiet btn--sm" type="button" data-copy-target="#join-command">Copy</button>
+                </div>
+                <div class="card__body">
+                    <div class="codeblock" id="join-command">@Model.Instruction.Command</div>
+                    <p class="hint" style="margin-top:12px">
+                        The node token is read from <code>SystemSettings</code>, never from source or configuration files.
+                        It is shown here because you need it on the machine &mdash; treat this page as sensitive.
+                    </p>
+                </div>
+            </section>
+        }
+
+        <section class="card">
+            <div class="card__head"><h2>Then</h2></div>
+            <div class="card__body">
+                <dl class="kv">
+                    <dt>1</dt><dd>Run the command as root on the new machine.</dd>
+                    <dt>2</dt><dd>Watch <code>journalctl -u k3s-agent -f</code> until it reports a successful registration.</dd>
+                    <dt>3</dt><dd>The node appears on the <a asp-action="Index">Nodes</a> page within a few seconds.</dd>
+                    <dt>4</dt><dd>Confirm it reaches <strong>Ready</strong> before you schedule anything onto it.</dd>
+                </dl>
+                <p class="hint" style="margin-top:14px">
+                    Getting the node token: <code>sudo cat /var/lib/rancher/k3s/server/node-token</code> on the k3s
+                    server, then store it under <strong>K3s.NodeToken</strong> in <a asp-controller="Settings" asp-action="Index">Settings</a>.
+                </p>
+            </div>
+        </section>
+    </div>
+</div>

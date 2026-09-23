@@ -1,0 +1,34 @@
+@model IReadOnlyList<UserAccessViewModel>
+@{ ViewData["Title"] = "Users"; }
+<section class="card">
+    <h1>Users</h1>
+    <p>Admin users can manage the cluster, settings, and users. ReadOnly users can view the cluster and logs.</p>
+    <p>New registrations remain disabled until an administrator enables them. Changing access signs the user out.</p>
+    @if (TempData["UserAccessMessage"] is string message)
+    {
+        <p role="status">@message</p>
+    }
+    @foreach (var account in Model)
+    {
+        <form asp-action="Save" method="post" class="card" style="padding:16px;margin:12px 0">
+            <h2>@account.UserName</h2>
+            <input type="hidden" name="UserName" value="@account.UserName" />
+            @if (account.UserName == User.Identity?.Name)
+            {
+                <p>Your account: Admin, enabled. Another administrator must change your access.</p>
+            }
+            else
+            {
+                <label>Role
+                    <select name="Role">
+                        <option value="Admin" selected="@(account.Role == UserRoles.Admin)">Admin</option>
+                        <option value="ReadOnly" selected="@(account.Role == UserRoles.ReadOnly)">ReadOnly</option>
+                    </select>
+                </label>
+                <label><input type="checkbox" name="Enabled" value="true" checked="@account.Enabled" /> Enabled</label>
+                <input type="hidden" name="Enabled" value="false" />
+                <button type="submit" class="btn">Save access</button>
+            }
+        </form>
+    }
+</section>

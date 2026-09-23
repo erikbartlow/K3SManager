@@ -1,0 +1,67 @@
+@using System.Reflection
+@{
+    var webAssembly = typeof(K3SManager.Web.Controllers.HomeController).Assembly;
+    var appVersion = webAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion.Split('+')[0] ?? webAssembly.GetName().Version?.ToString();
+    var refreshSeconds = ViewData["RefreshSeconds"] as int? ?? 0;
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Home";
+    string NavClass(string name) => string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "is-active" : string.Empty;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] &middot; K3S Manager</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2327293B'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='15' fill='%23CBD5FE' text-anchor='middle'%3Ek3%3C/text%3E%3C/svg%3E" />
+</head>
+<body data-refresh-seconds="@refreshSeconds">
+    <header class="masthead">
+        <div class="masthead__inner">
+            <a class="brand" asp-controller="Home" asp-action="Index">
+                <span class="brand__mark">k3</span>
+                <span>K3S Manager v@(appVersion)</span>
+            </a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+            <button class="mobile-nav-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false" aria-label="Open navigation" hidden>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+            </button>
+            <div class="masthead__menu" id="primary-navigation">
+            <nav class="nav" aria-label="Sections">
+                <a class="@NavClass("Home")" asp-controller="Home" asp-action="Index">Overview</a>
+                <a class="@NavClass("Namespaces")" asp-controller="Namespaces" asp-action="Index">Namespaces</a>
+                <a class="@NavClass("Nodes")" asp-controller="Nodes" asp-action="Index">Nodes</a>
+                <a admin-only class="@NavClass("Settings")" asp-controller="Settings" asp-action="Index">Settings</a>
+                <a admin-only class="@NavClass("Users")" asp-controller="Users" asp-action="Index">Users</a>
+            </nav>
+            <form class="masthead__account" asp-controller="Account" asp-action="Logout" method="post">
+                <span>@User.Identity.Name (@User.FindFirst("role")?.Value)</span>
+                <button class="btn btn--ghost" type="submit">Sign out</button>
+            </form>
+            </div>
+            }
+            <div class="masthead__status">
+                @if (ViewData["ClusterName"] is string clusterName && !string.IsNullOrEmpty(clusterName))
+                {
+                    <span class="tag">@clusterName</span>
+                }
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <partial name="_Alert" />
+        @RenderBody()
+    </main>
+
+    <footer class="footer">
+        K3S Manager &middot; read-through cache @(ViewData["CacheSeconds"] ?? 10)s &middot;
+        <a asp-controller="Home" asp-action="Index">refresh</a>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

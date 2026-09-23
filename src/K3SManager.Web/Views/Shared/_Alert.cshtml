@@ -1,0 +1,22 @@
+@using System.Text.Json
+@{
+    var raw = TempData[Alert.TempDataKey] as string;
+    Alert? alert = null;
+    if (!string.IsNullOrEmpty(raw))
+    {
+        try
+        {
+            alert = JsonSerializer.Deserialize<Alert>(raw);
+        }
+        catch (JsonException)
+        {
+            alert = null;
+        }
+    }
+}
+@if (alert is not null)
+{
+    <div class="alert alert--@alert.Level" role="status">
+        <span>@alert.Text</span>
+    </div>
+}

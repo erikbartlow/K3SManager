@@ -1,0 +1,27 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+<section class="card auth-card">
+    <h1>Register</h1>
+    <p>Your account must be enabled by an administrator before you can sign in.</p>
+    <form asp-controller="Account" asp-action="Register" method="post">
+        <div asp-validation-summary="All" class="alert alert--warning"></div>
+        <div class="field">
+            <label asp-for="UserName">Username</label>
+            <input asp-for="UserName" autocomplete="username" required maxlength="64" aria-describedby="username-help" />
+            <span id="username-help" class="hint">Use letters, numbers, periods, underscores or hyphens.</span>
+        </div>
+        <div class="field">
+            <label asp-for="Password">Password</label>
+            <input asp-for="Password" autocomplete="new-password" required minlength="15" maxlength="128" aria-describedby="password-help" />
+            <span id="password-help" class="hint">Use 15–128 characters.</span>
+        </div>
+        <div class="field">
+            <label asp-for="ConfirmPassword">Confirm password</label>
+            <input asp-for="ConfirmPassword" autocomplete="new-password" required minlength="15" maxlength="128" />
+        </div>
+        <button class="btn" type="submit">Register</button>
+    </form>
+    <p class="auth-card__links">Already have an account? <a asp-controller="Account" asp-action="Login">Sign in</a></p>
+</section>

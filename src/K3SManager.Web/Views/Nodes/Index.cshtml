@@ -1,0 +1,96 @@
+@model NodeListViewModel
+@{
+    ViewData["Title"] = "Nodes";
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Workers and control plane</p>
+        <h1>Nodes</h1>
+        <p>
+            @Model.ReadyCount of @Model.Nodes.Count ready
+            @if (Model.CordonedCount > 0)
+            {
+                <span class="pill is-warn">@Model.CordonedCount cordoned</span>
+            }
+            &middot; @ViewHelpers.Cores(Model.TotalCpuCores) CPU, @ViewHelpers.GiB(Model.TotalMemoryGiB) allocatable
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a admin-only class="btn" asp-action="Join">Add a worker node</a>
+    </div>
+</div>
+
+<div class="toolbar">
+    <input type="search" data-filter-target="#node-table" placeholder="Filter nodes" style="max-width:260px" aria-label="Filter nodes" />
+</div>
+
+<section class="card">
+    <div class="card__body card__body--flush table-wrap">
+        <table class="data" id="node-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Roles</th>
+                    <th>Version</th>
+                    <th>Address</th>
+                    <th class="num">Pods</th>
+                    <th>CPU committed</th>
+                    <th>Memory committed</th>
+                    <th class="num">Age</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var n in Model.Nodes)
+            {
+                <tr>
+                    <td>
+                        <a asp-action="Details" asp-route-name="@n.Name">@n.Name</a>
+                        @foreach (var pressure in n.Pressures)
+                        {
+                            <span class="pill is-danger">@pressure.Type</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="pill @(n.IsReady ? (n.IsUnschedulable ? "is-warn" : "is-ok") : "is-danger")">
+                            <span class="pill__dot"></span>@n.Status
+                        </span>
+                    </td>
+                    <td><span class="tag">@n.Roles</span></td>
+                    <td class="mono">@n.KubeletVersion</td>
+                    <td class="mono">@n.InternalIp</td>
+                    <td class="num">@n.PodCount<span style="color:var(--muted)">/@n.PodCapacity</span></td>
+                    <td>
+                        <span class="meter meter--inline">
+                            <span class="meter__fill @ViewHelpers.PressureClass(n.CpuCommitPercent)" style="display:block;width:@(Math.Min(n.CpuCommitPercent, 100))%"></span>
+                        </span>
+                        <span class="mono">@ViewHelpers.Cores(n.CpuRequestedCores) / @ViewHelpers.Cores(n.CpuAllocatableCores)</span>
+                    </td>
+                    <td>
+                        <span class="meter meter--inline">
+                            <span class="meter__fill @ViewHelpers.PressureClass(n.MemoryCommitPercent)" style="display:block;width:@(Math.Min(n.MemoryCommitPercent, 100))%"></span>
+                        </span>
+                        <span class="mono">@ViewHelpers.GiB(n.MemoryRequestedGiB) / @ViewHelpers.GiB(n.MemoryAllocatableGiB)</span>
+                    </td>
+                    <td class="num mono">@ViewHelpers.Age(n.Age)</td>
+                    <td>
+                        <div class="cell-actions">
+                            @if (Model.CanDrain)
+                            {
+                                <form admin-only method="post" asp-action="Cordon">
+                                    <input type="hidden" name="name" value="@n.Name" />
+                                    <input type="hidden" name="schedulable" value="@(n.IsUnschedulable ? "true" : "false")" />
+                                    <button class="btn btn--quiet btn--sm" type="submit">@(n.IsUnschedulable ? "Uncordon" : "Cordon")</button>
+                                </form>
+                            }
+                            <a class="btn btn--quiet btn--sm" asp-action="Details" asp-route-name="@n.Name">Open</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

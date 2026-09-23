@@ -1,0 +1,165 @@
+# Deploys K3S Manager into the cluster it manages.
+#
+# Settings are mounted from /home/codedthought/k3s_manage/settings/web/appsettings.json.
+# Create that file on every eligible node before deploying, including its
+# CoreSettings database connection. No database Secret is required.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k3smanager
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+---
+# Read everything; mutate only what the app actually offers as an action.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k3smanager
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces", "pods", "services", "events", "resourcequotas"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/eviction"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["patch", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete"]
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
+    verbs: ["create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale"]
+    verbs: ["patch", "update"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k3smanager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k3smanager
+subjects:
+  - kind: ServiceAccount
+    name: k3smanager
+    namespace: k3smanager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k3smanager
+  template:
+    metadata:
+      labels:
+        app: k3smanager
+    spec:
+      serviceAccountName: k3smanager
+      # k3s on Raspberry Pi: the image is arm64 only.
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: web
+          image: codedthought/k3smanager-web:v1.0.8-arm64
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          # readOnlyRootFilesystem leaves the app with nowhere to write, and ASP.NET Core wants a
+          # temp dir and a DataProtection key ring. Both are per-pod and disposable.
+          volumeMounts:
+            - name: appsettings
+              mountPath: /app/appsettings.json
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: dataprotection
+              mountPath: /home/app/.aspnet/DataProtection-Keys
+      volumes:
+        - name: appsettings
+          hostPath:
+            path: /home/codedthought/k3s_manage/settings/web/appsettings.json
+            type: File
+        - name: tmp
+          emptyDir: {}
+        - name: dataprotection
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+spec:
+  selector:
+    app: k3smanager
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - k3s.codedthought.info
+      secretName: k3s-codedthought-info-tls
+  rules:
+    - host: k3s.codedthought.info
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: k3smanager
+                port:
+                  number: 80

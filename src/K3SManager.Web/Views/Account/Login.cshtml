@@ -1,0 +1,28 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<section class="card auth-card">
+    <h1>Sign in</h1>
+    <p>Use your K3S Manager administrator account.</p>
+    @if (TempData["RegistrationMessage"] is string registrationMessage)
+    {
+        <div class="alert alert--info" role="status">
+            <div><strong>Registration successful — approval required</strong><p>@registrationMessage</p></div>
+        </div>
+    }
+    <form asp-controller="Account" asp-action="Login" method="post">
+        <div asp-validation-summary="All" class="alert alert--warning"></div>
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div class="field">
+            <label asp-for="UserName">Username</label>
+            <input asp-for="UserName" autocomplete="username" required maxlength="64" />
+        </div>
+        <div class="field">
+            <label asp-for="Password">Password</label>
+            <input asp-for="Password" autocomplete="current-password" required maxlength="128" />
+        </div>
+        <button class="btn" type="submit">Sign in</button>
+    </form>
+    <p class="auth-card__links">Need an account? <a asp-controller="Account" asp-action="Register">Register</a></p>
+</section>

@@ -1,0 +1,92 @@
+@model NamespaceListViewModel
+@{
+    ViewData["Title"] = "Namespaces";
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Grouped by namespace</p>
+        <h1>Namespaces</h1>
+        <p>@Model.Namespaces.Count namespace(s), @Model.TotalPods pod(s)@(Model.TroubledCount > 0 ? $", {Model.TroubledCount} needing attention" : "").</p>
+    </div>
+    <div class="page-head__actions">
+        <a admin-only class="btn" asp-action="Create">New namespace</a>
+    </div>
+</div>
+
+<form class="toolbar" method="get" asp-action="Index">
+    <input type="search" name="filter" value="@Model.Filter" placeholder="Filter by name or label value" style="max-width:320px" />
+    <label class="check">
+        <input type="checkbox" name="includeSystem" value="true" checked="@Model.IncludeSystem" />
+        Show system namespaces
+    </label>
+    <button class="btn btn--ghost" type="submit">Apply</button>
+    <span class="spacer"></span>
+    <input type="search" data-filter-target="#ns-table" placeholder="Quick filter" style="max-width:220px" aria-label="Quick filter" />
+</form>
+
+<section class="card">
+    <div class="card__body card__body--flush table-wrap">
+        @if (Model.Namespaces.Count == 0)
+        {
+            <div class="empty">
+                <strong>Nothing matches</strong>
+                Try clearing the filter, or create a namespace.
+            </div>
+        }
+        else
+        {
+            <table class="data" id="ns-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Owner</th>
+                        <th>Environment</th>
+                        <th class="num">Pods</th>
+                        <th class="num">CPU req</th>
+                        <th class="num">Mem req</th>
+                        <th class="num">Age</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var ns in Model.Namespaces)
+                {
+                    <tr>
+                        <td>
+                            <a asp-action="Details" asp-route-name="@ns.Name">@ns.Name</a>
+                            @if (ns.Profile?.IsPinned == true)
+                            {
+                                <span class="tag">pinned</span>
+                            }
+                            @if (ns.IsSystem)
+                            {
+                                <span class="tag">system</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="pill @ViewHelpers.PhaseClass(ns.Phase)"><span class="pill__dot"></span>@ns.Phase</span>
+                            @if (ns.PodsNotReady > 0)
+                            {
+                                <span class="pill is-warn">@ns.PodsNotReady not ready</span>
+                            }
+                        </td>
+                        <td>@(ns.Profile?.Owner ?? "-")</td>
+                        <td>@(string.IsNullOrEmpty(ns.Profile?.Environment) ? "-" : ns.Profile!.Environment)</td>
+                        <td class="num">@ns.PodsRunning<span style="color:var(--muted)">/@ns.PodCount</span></td>
+                        <td class="num mono">@ViewHelpers.Cores(ns.CpuRequestedCores)</td>
+                        <td class="num mono">@ViewHelpers.GiB(ns.MemoryRequestedGiB)</td>
+                        <td class="num mono">@ViewHelpers.Age(ns.Age)</td>
+                        <td>
+                            <div class="cell-actions">
+                                <a class="btn btn--quiet btn--sm" asp-action="Details" asp-route-name="@ns.Name">Open</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>

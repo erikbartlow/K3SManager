@@ -1,0 +1,139 @@
+# Deploys K3S Manager into the cluster it manages.
+#
+# The connection string and any other secret are supplied as environment
+# variables from a Secret you create yourself:
+#
+#   kubectl -n k3smanager create secret generic k3smanager-db \
+#     --from-literal=CoreSettings__Connections__MYSQL__ConnectionString='Server=mysql;Port=3306;Database=k3smanager;Uid=k3sm;Pwd=...'
+#
+# That key overrides the empty ConnectionString in ctSettings.json, which is why Program.cs
+# re-applies the environment variable source after loading that file.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k3smanager
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+---
+# Read everything; mutate only what the app actually offers as an action.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k3smanager
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces", "pods", "services", "events", "resourcequotas"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/eviction"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["patch", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete"]
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
+    verbs: ["create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale"]
+    verbs: ["patch", "update"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k3smanager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k3smanager
+subjects:
+  - kind: ServiceAccount
+    name: k3smanager
+    namespace: k3smanager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k3smanager
+  template:
+    metadata:
+      labels:
+        app: k3smanager
+    spec:
+      serviceAccountName: k3smanager
+      containers:
+        - name: web
+          image: k3smanager:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+          envFrom:
+            - secretRef:
+                name: k3smanager-db
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+spec:
+  selector:
+    app: k3smanager
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: k3smanager
+  namespace: k3smanager
+spec:
+  entryPoints: ["websecure"]
+  routes:
+    - match: Host(`k3s.local`)
+      kind: Rule
+      services:
+        - name: k3smanager
+          port: 80

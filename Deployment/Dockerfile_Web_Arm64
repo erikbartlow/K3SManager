@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.7
+#
+# Build context is the solution root:
+#   docker buildx build --platform linux/arm64 -f Deployment/Dockerfile_Web_Arm64 .
+# In practice, run Deployment/build-and-push-image.ps1 instead.
+
+ARG BUILD_CONFIGURATION=Release
+
+FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG BUILD_CONFIGURATION
+WORKDIR /src
+
+COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["src/K3SManager.Core/K3SManager.Core.csproj", "src/K3SManager.Core/"]
+COPY ["src/K3SManager.Kubernetes/K3SManager.Kubernetes.csproj", "src/K3SManager.Kubernetes/"]
+COPY ["src/K3SManager.Data/K3SManager.Data.csproj", "src/K3SManager.Data/"]
+COPY ["src/K3SManager.Web/K3SManager.Web.csproj", "src/K3SManager.Web/"]
+
+RUN --mount=type=cache,id=nuget-k3smanager-web-arm64,target=/root/.nuget/packages,sharing=locked \
+    dotnet restore "./src/K3SManager.Web/K3SManager.Web.csproj"
+
+COPY ["src/", "src/"]
+
+RUN --mount=type=cache,id=nuget-k3smanager-web-arm64,target=/root/.nuget/packages,sharing=locked \
+    dotnet publish "./src/K3SManager.Web/K3SManager.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+FROM --platform=linux/arm64 mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+ARG PROJECT_VERSION=0.0.0
+LABEL org.opencontainers.image.version="${PROJECT_VERSION}" \
+      org.opencontainers.image.title="K3S Manager Web"
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_HTTP_PORTS=8080
+
+EXPOSE 8080
+
+# The deployment runs with readOnlyRootFilesystem, so the container runs as the image's
+# non-root app user and writable paths are mounted in by the manifest.
+USER $APP_UID
+
+ENTRYPOINT ["dotnet", "K3SManager.Web.dll"]

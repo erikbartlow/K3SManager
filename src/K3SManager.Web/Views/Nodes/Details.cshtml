@@ -1,0 +1,270 @@
+@model NodeDetailViewModel
+@{
+    var n = Model.Node;
+    ViewData["Title"] = n.Name;
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Node</p>
+        <h1>@n.Name</h1>
+        <p>
+            <span class="pill @(n.IsReady ? (n.IsUnschedulable ? "is-warn" : "is-ok") : "is-danger")">
+                <span class="pill__dot"></span>@n.Status
+            </span>
+            <span class="tag">@n.Roles</span>
+            &middot; @n.KubeletVersion &middot; joined @ViewHelpers.Age(n.Age) ago
+        </p>
+    </div>
+    <div class="page-head__actions">
+        @if (Model.CanDrain)
+        {
+            <form admin-only method="post" asp-action="Cordon">
+                <input type="hidden" name="name" value="@n.Name" />
+                <input type="hidden" name="schedulable" value="@(n.IsUnschedulable ? "true" : "false")" />
+                <button class="btn btn--ghost" type="submit">@(n.IsUnschedulable ? "Uncordon" : "Cordon")</button>
+            </form>
+        }
+        <a class="btn btn--ghost" asp-action="Index">All nodes</a>
+    </div>
+</div>
+
+@foreach (var pressure in n.Pressures)
+{
+    <div class="alert alert--warning">
+        <span><strong>@pressure.Type</strong> &mdash; @(pressure.Message ?? pressure.Reason)</span>
+    </div>
+}
+
+<div class="grid grid--stats" style="margin-bottom:16px">
+    <div class="stat">
+        <div class="stat__label">Pods</div>
+        <div class="stat__value">@n.PodCount<small> / @n.PodCapacity</small></div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">CPU committed</div>
+        <div class="stat__value">@ViewHelpers.Percent(n.CpuCommitPercent)</div>
+        <div class="meter"><div class="meter__fill @ViewHelpers.PressureClass(n.CpuCommitPercent)" style="width:@(Math.Min(n.CpuCommitPercent, 100))%"></div></div>
+        <div class="stat__note">
+            @ViewHelpers.Cores(n.CpuRequestedCores) requested of @ViewHelpers.Cores(n.CpuAllocatableCores)
+            @if (n.CpuUsageCores is not null)
+            {
+                <text>&middot; @ViewHelpers.Cores(n.CpuUsageCores.Value) in use</text>
+            }
+        </div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Memory committed</div>
+        <div class="stat__value">@ViewHelpers.Percent(n.MemoryCommitPercent)</div>
+        <div class="meter"><div class="meter__fill @ViewHelpers.PressureClass(n.MemoryCommitPercent)" style="width:@(Math.Min(n.MemoryCommitPercent, 100))%"></div></div>
+        <div class="stat__note">
+            @ViewHelpers.GiB(n.MemoryRequestedGiB) requested of @ViewHelpers.GiB(n.MemoryAllocatableGiB)
+            @if (n.MemoryUsageGiB is not null)
+            {
+                <text>&middot; @ViewHelpers.GiB(n.MemoryUsageGiB.Value) in use</text>
+            }
+        </div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Architecture</div>
+        <div class="stat__value" style="font-size:24px">@n.Architecture</div>
+        <div class="stat__note">@ViewHelpers.Clip(n.OsImage, 40)</div>
+    </div>
+</div>
+
+<div class="grid grid--halves">
+    <section class="card">
+        <div class="card__head"><h2>Pods on this node</h2></div>
+        <div class="card__body card__body--flush table-wrap">
+            @if (Model.Pods.Count == 0)
+            {
+                <div class="empty"><strong>No pods scheduled here</strong></div>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>Namespace</th><th>Pod</th><th>Ready</th><th>Status</th><th class="num">Restarts</th></tr></thead>
+                    <tbody>
+                    @foreach (var p in Model.Pods)
+                    {
+                        <tr>
+                            <td><a asp-controller="Namespaces" asp-action="Details" asp-route-name="@p.Namespace">@p.Namespace</a></td>
+                            <td class="mono">@p.Name</td>
+                            <td><span class="pill @(p.IsReady ? "is-ok" : "is-warn")">@p.ContainerLabel</span></td>
+                            <td><span class="pill @ViewHelpers.PhaseClass(p.Phase)">@p.Phase</span></td>
+                            <td class="num">@p.RestartCount</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </section>
+
+    <div class="stack">
+        <section class="card">
+            <div class="card__head"><h2>System</h2></div>
+            <div class="card__body">
+                <dl class="kv">
+                    <dt>Internal IP</dt><dd class="mono">@n.InternalIp</dd>
+                    <dt>Kubelet</dt><dd class="mono">@n.KubeletVersion</dd>
+                    <dt>Runtime</dt><dd class="mono">@n.ContainerRuntime</dd>
+                    <dt>OS</dt><dd>@n.OsImage</dd>
+                    <dt>Kernel</dt><dd class="mono">@n.KernelVersion</dd>
+                    <dt>Capacity</dt><dd>@ViewHelpers.Cores(n.CpuCapacityCores) CPU, @ViewHelpers.GiB(n.MemoryCapacityGiB)</dd>
+                </dl>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card__head"><h2>Conditions</h2></div>
+            <div class="card__body card__body--flush table-wrap">
+                <table class="data">
+                    <thead><tr><th>Type</th><th>Status</th><th>Reason</th></tr></thead>
+                    <tbody>
+                    @foreach (var condition in n.Conditions)
+                    {
+                        <tr>
+                            <td>@condition.Type</td>
+                            <td>
+                                <span class="pill @(condition.Type == "Ready"
+                                    ? (condition.IsActive ? "is-ok" : "is-danger")
+                                    : (condition.IsActive ? "is-warn" : "is-ok"))">@condition.Status</span>
+                            </td>
+                            <td>@condition.Reason</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card__head"><h2>Taints</h2></div>
+            <div class="card__body">
+                @if (n.Taints.Count == 0)
+                {
+                    <p class="hint">No taints. Every pod that tolerates nothing can land here.</p>
+                }
+                else
+                {
+                    <div class="tag-row" style="margin-bottom:12px">
+                        @foreach (var taint in n.Taints)
+                        {
+                            <form admin-only method="post" asp-action="RemoveTaint" style="display:inline-flex;gap:4px;align-items:center">
+                                <input type="hidden" name="name" value="@n.Name" />
+                                <input type="hidden" name="key" value="@taint.Key" />
+                                <input type="hidden" name="effect" value="@taint.Effect" />
+                                <span class="tag">@taint.ToString()</span>
+                                <button class="btn btn--quiet btn--sm" type="submit" aria-label="Remove taint @taint.ToString()">&times;</button>
+                            </form>
+                        }
+                    </div>
+                }
+
+                <details class="disclosure">
+                    <summary>Add a taint</summary>
+                    <form admin-only method="post" asp-action="AddTaint" style="margin-top:10px">
+                        <input type="hidden" name="NodeName" value="@n.Name" />
+                        <div class="form-row">
+                            <div class="field">
+                                <label for="taintKey">Key</label>
+                                <input id="taintKey" name="Key" autocomplete="off" placeholder="workload" />
+                            </div>
+                            <div class="field">
+                                <label for="taintValue">Value</label>
+                                <input id="taintValue" name="Value" autocomplete="off" placeholder="storage" />
+                            </div>
+                            <div class="field">
+                                <label for="taintEffect">Effect</label>
+                                <select id="taintEffect" name="Effect">
+                                    @foreach (var effect in TaintInputModel.Effects)
+                                    {
+                                        <option value="@effect">@effect</option>
+                                    }
+                                </select>
+                            </div>
+                            <button class="btn btn--ghost" type="submit">Add</button>
+                        </div>
+                    </form>
+                </details>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card__head"><h2>Labels</h2></div>
+            <div class="card__body">
+                <div class="tag-row" style="margin-bottom:12px">
+                    @foreach (var label in n.Labels.OrderBy(l => l.Key, StringComparer.Ordinal))
+                    {
+                        <span class="tag">@label.Key@(string.IsNullOrEmpty(label.Value) ? "" : "=" + label.Value)</span>
+                    }
+                </div>
+                <details class="disclosure">
+                    <summary>Set or remove a label</summary>
+                    <form admin-only method="post" asp-action="SetLabel" style="margin-top:10px">
+                        <input type="hidden" name="NodeName" value="@n.Name" />
+                        <div class="form-row">
+                            <div class="field">
+                                <label for="labelKey">Key</label>
+                                <input id="labelKey" name="Key" autocomplete="off" placeholder="node-role.kubernetes.io/storage" />
+                            </div>
+                            <div class="field">
+                                <label for="labelValue">Value</label>
+                                <input id="labelValue" name="Value" autocomplete="off" />
+                            </div>
+                            <button class="btn btn--ghost" type="submit" name="remove" value="false">Set</button>
+                            <button class="btn btn--quiet" type="submit" name="remove" value="true">Remove</button>
+                        </div>
+                    </form>
+                </details>
+            </div>
+        </section>
+    </div>
+</div>
+
+@if (!n.IsControlPlane)
+{
+    <section class="card danger-zone" style="margin-top:16px">
+        <div class="card__head"><h2>Take this node out of service</h2></div>
+        <div class="card__body">
+            <div class="grid grid--halves">
+                <div>
+                    <p class="eyebrow">Drain</p>
+                    <p>
+                        Cordons the node, then evicts every pod on it. DaemonSet pods stay unless you say otherwise.
+                        A PodDisruptionBudget can refuse an eviction &mdash; that is reported rather than forced.
+                    </p>
+                    @if (!Model.CanDrain)
+                    {
+                        <p class="hint">Cordon and drain are switched off in Settings.</p>
+                    }
+                    else
+                    {
+                        <form admin-only method="post" asp-action="Drain">
+                            <input type="hidden" name="name" value="@n.Name" />
+                            <label class="check"><input type="checkbox" name="ignoreDaemonSets" value="true" checked /> Leave DaemonSet pods in place</label>
+                            <label class="check" style="margin-top:6px"><input type="checkbox" name="force" value="true" /> Continue even if some evictions are refused</label>
+                            <button class="btn btn--ghost" type="submit" style="margin-top:12px">Drain node</button>
+                        </form>
+                    }
+                </div>
+                <div>
+                    <p class="eyebrow">Remove</p>
+                    <p>
+                        Deletes the node object. The machine itself keeps running k3s and will re-register unless you
+                        run <code>k3s-agent-uninstall.sh</code> on it. Drain first. Type the node name to confirm.
+                    </p>
+                    <form admin-only method="post" asp-action="Remove" data-confirm-name="@n.Name" class="form-row">
+                        <input type="hidden" name="name" value="@n.Name" />
+                        <div class="field">
+                            <label for="confirmName">Node name</label>
+                            <input id="confirmName" name="confirmName" autocomplete="off" placeholder="@n.Name" />
+                        </div>
+                        <button class="btn btn--danger" type="submit" disabled>Remove node</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+}

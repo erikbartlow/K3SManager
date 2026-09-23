@@ -1,0 +1,113 @@
+@model SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">System</p>
+        <h1>Settings</h1>
+        <p>Stored in the <code>SystemSettings</code> table. Nothing here lives in source or in appsettings.json.</p>
+    </div>
+</div>
+
+@if (!Model.PersistenceEnabled)
+{
+    <div class="alert alert--warning">
+        <span>
+            Database persistence is disabled, so settings cannot be read or saved. Enable
+            <code>Data:Enabled</code> and configure a connection under <code>CoreSettings:Connections</code>
+            in appsettings.json. Set <code>Data:ConnectionName</code> to its <code>Name</code>, or leave it
+            empty to use the connection marked <code>Primary</code>. Restart the application after updating
+            these settings, and ensure <code>db/001_schema.sql</code> has been applied to the database.
+        </span>
+    </div>
+}
+
+<section class="card" style="margin-bottom:16px">
+    <div class="card__head"><h2>Configuration</h2></div>
+    <div class="card__body card__body--flush table-wrap">
+        @if (Model.Settings.Count == 0)
+        {
+            <div class="empty"><strong>No settings</strong>Run the schema script to seed the default rows.</div>
+        }
+        else
+        {
+            <table class="data">
+                <thead><tr><th>Key</th><th>Value</th><th>What it does</th><th class="num">Updated</th></tr></thead>
+                <tbody>
+                @foreach (var setting in Model.Settings)
+                {
+                    <tr>
+                        <td class="mono">@setting.SettingKey</td>
+                        <td>
+                            <form admin-only method="post" asp-action="Save" class="form-row">
+                                <input type="hidden" name="SettingKey" value="@setting.SettingKey" />
+                                <div class="field">
+                                    <label class="sr-only" for="v-@setting.SettingKey">@setting.SettingKey</label>
+                                    @if (setting.IsSecret)
+                                    {
+                                        <input id="v-@setting.SettingKey" name="SettingValue" type="password"
+                                               autocomplete="new-password"
+                                               placeholder="@(string.IsNullOrEmpty(setting.SettingValue) ? "not set" : "stored - type to replace")" />
+                                    }
+                                    else
+                                    {
+                                        <input id="v-@setting.SettingKey" name="SettingValue" value="@setting.SettingValue" autocomplete="off" />
+                                    }
+                                </div>
+                                <button class="btn btn--ghost btn--sm" type="submit">Save</button>
+                            </form>
+                        </td>
+                        <td>
+                            @setting.Description
+                            @if (setting.IsSecret)
+                            {
+                                <span class="pill is-accent">secret</span>
+                            }
+                        </td>
+                        <td class="num mono">@ViewHelpers.Age(DateTime.UtcNow - setting.UpdatedUtc)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>
+
+<section class="card">
+    <div class="card__head"><h2>Audit trail</h2></div>
+    <div class="card__body card__body--flush table-wrap">
+        @if (Model.RecentActions.Count == 0)
+        {
+            <div class="empty"><strong>Nothing recorded yet</strong>Every create, scale, cordon, drain and delete lands here.</div>
+        }
+        else
+        {
+            <table class="data">
+                <thead><tr><th>When</th><th>Action</th><th>Target</th><th>By</th><th>Result</th></tr></thead>
+                <tbody>
+                @foreach (var entry in Model.RecentActions)
+                {
+                    <tr>
+                        <td class="mono">@ViewHelpers.Age(DateTime.UtcNow - entry.CreatedUtc) ago</td>
+                        <td>@entry.Action</td>
+                        <td class="mono">@entry.TargetKind/@(string.IsNullOrEmpty(entry.TargetNamespace) ? "" : entry.TargetNamespace + "/")@entry.TargetName</td>
+                        <td>@entry.ActorName<span class="hint"> @entry.ActorAddress</span></td>
+                        <td>
+                            @if (entry.Succeeded)
+                            {
+                                <span class="pill is-ok">ok</span>
+                            }
+                            else
+                            {
+                                <span class="pill is-danger" title="@entry.Error">failed</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>

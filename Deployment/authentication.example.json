@@ -1,0 +1,10 @@
+{
+  "Authentication": {
+    "Jwt": {
+      "Issuer": "K3SManager",
+      "Audience": "K3SManager.Web",
+      "SigningKey": "REPLACE_WITH_BASE64_RANDOM_KEY",
+      "LifetimeMinutes": 30
+    }
+  }
+}

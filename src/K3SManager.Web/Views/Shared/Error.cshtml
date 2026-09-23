@@ -1,0 +1,27 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+<div class="page-head">
+    <div>
+        <p class="eyebrow">Error @Model.StatusCode</p>
+        <h1>That request did not complete</h1>
+        <p>@Model.Message</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost" asp-controller="Home" asp-action="Index">Back to overview</a>
+    </div>
+</div>
+
+@if (Model.ShowRequestId)
+{
+    <div class="card">
+        <div class="card__body">
+            <dl class="kv">
+                <dt>Request id</dt>
+                <dd class="mono">@Model.RequestId</dd>
+            </dl>
+            <p class="hint" style="margin-top:12px">Search the application log for that id to see the full exception.</p>
+        </div>
+    </div>
+}
