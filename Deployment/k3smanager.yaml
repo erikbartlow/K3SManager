@@ -86,7 +86,7 @@ spec:
         kubernetes.io/arch: arm64
       containers:
         - name: web
-          image: codedthought/k3smanager-web:v1.0.8-arm64
+          image: codedthought/k3smanager-web:v1.0.9-arm64
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

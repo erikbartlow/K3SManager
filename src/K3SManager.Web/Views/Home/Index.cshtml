@@ -168,7 +168,7 @@
                     {
                         <tr>
                             <td>
-                                <a asp-controller="Namespaces" asp-action="Details" asp-route-name="@ns.Name">@ns.Name</a>
+                                <a asp-controller="Namespaces" asp-action="Details" asp-route-name="@ns.Name" title="@ns.Name">@ns.DisplayName</a>
                                 @if (ns.HasProblems)
                                 {
                                     <span class="pill is-warn">@ns.PodsNotReady not ready</span>

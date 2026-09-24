@@ -58,6 +58,7 @@ internal sealed class NamespaceProfileRepository : INamespaceProfileRepository
                     store.SaveNew(new NamespaceProfileEntity
                     {
                         NamespaceName = profile.NamespaceName,
+                        Alias = profile.Alias,
                         Owner = profile.Owner,
                         Description = profile.Description,
                         Environment = profile.Environment,
@@ -69,6 +70,7 @@ internal sealed class NamespaceProfileRepository : INamespaceProfileRepository
                 }
 
                 existing.Owner = profile.Owner;
+                existing.Alias = profile.Alias;
                 existing.Description = profile.Description;
                 existing.Environment = profile.Environment;
                 existing.IsPinned = profile.IsPinned;
@@ -103,6 +105,7 @@ internal sealed class NamespaceProfileRepository : INamespaceProfileRepository
     {
         Id = entity.Id,
         NamespaceName = entity.NamespaceName,
+        Alias = entity.Alias,
         Owner = entity.Owner,
         Description = entity.Description,
         Environment = entity.Environment,

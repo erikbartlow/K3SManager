@@ -38,6 +38,10 @@ client library directly, so swapping the persistence layer touches one project.
    mysql -u root -p k3smanager < db/001_schema.sql
    ```
 
+   Apply `db/004_namespace_alias.sql` once before deploying the namespace alias feature
+   (for both new and existing databases). Aliases are stored only in `NamespaceProfile`;
+   Kubernetes namespace names and configuration are unchanged.
+
 2. Point CodedThought.Core at the database. Connections live in the `CoreSettings:Connections`
    section of `src/K3SManager.Web/appsettings.json`, which ships with an empty `ConnectionString`.
    Either put it in user-secrets for development, or set the environment variable, which is what

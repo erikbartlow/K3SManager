@@ -2,13 +2,37 @@
 @{
     var d = Model.Detail;
     var s = d.Summary;
-    ViewData["Title"] = s.Name;
+    ViewData["Title"] = s.DisplayName;
 }
 
 <div class="page-head">
     <div>
         <p class="eyebrow">Namespace</p>
-        <h1>@s.Name</h1>
+        <div style="display:flex;align-items:center;gap:8px">
+            <h1>@s.DisplayName</h1>
+            @if (Model.PersistenceEnabled)
+            {
+                <button admin-only type="button" class="btn btn--quiet btn--sm" id="edit-namespace-alias"
+                        aria-label="Edit namespace alias" title="Edit namespace alias" aria-expanded="false" aria-controls="namespace-alias-form">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="m16 3 5 5-13 13H3v-5L16 3Z M13 6l5 5" />
+                    </svg>
+                </button>
+            }
+        </div>
+        @if (Model.PersistenceEnabled)
+        {
+            <form admin-only method="post" asp-action="SaveAlias" id="namespace-alias-form" hidden>
+                <input type="hidden" name="NamespaceName" value="@s.Name" />
+                <div class="field">
+                    <label for="namespace-alias">Display alias</label>
+                    <input id="namespace-alias" name="Alias" value="@s.Profile?.Alias" maxlength="128" placeholder="@s.Name" aria-describedby="namespace-alias-hint" />
+                    <span class="hint" id="namespace-alias-hint">A local display name. Leave blank to use @s.Name.</span>
+                </div>
+                <button class="btn btn--sm" type="submit">Save</button>
+                <button class="btn btn--quiet btn--sm" type="button" id="cancel-namespace-alias">Cancel</button>
+            </form>
+        }
         <p>
             <span class="pill @ViewHelpers.PhaseClass(s.Phase)"><span class="pill__dot"></span>@s.Phase</span>
             &middot; created @ViewHelpers.Age(s.Age) ago

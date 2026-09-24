@@ -55,7 +55,7 @@
                 {
                     <tr>
                         <td>
-                            <a asp-action="Details" asp-route-name="@ns.Name">@ns.Name</a>
+                            <a asp-action="Details" asp-route-name="@ns.Name" title="@ns.Name">@ns.DisplayName</a>
                             @if (ns.Profile?.IsPinned == true)
                             {
                                 <span class="tag">pinned</span>

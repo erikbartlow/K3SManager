@@ -24,6 +24,8 @@ public sealed record NamespaceSummary
     /// <summary>Operator-supplied metadata held in the app database, not in the cluster.</summary>
     public NamespaceProfile? Profile { get; init; }
 
+    public string DisplayName => string.IsNullOrWhiteSpace(Profile?.Alias) ? Name : Profile.Alias;
+
     public TimeSpan? Age => CreatedUtc is null ? null : DateTime.UtcNow - CreatedUtc.Value;
     public bool HasProblems => PodsNotReady > 0 || !string.Equals(Phase, "Active", StringComparison.Ordinal);
 }
@@ -33,6 +35,7 @@ public sealed record NamespaceProfile
 {
     public long Id { get; init; }
     public required string NamespaceName { get; init; }
+    public string? Alias { get; init; }
     public string? Owner { get; init; }
     public string? Description { get; init; }
     public string? Environment { get; init; }

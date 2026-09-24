@@ -44,6 +44,7 @@ public sealed class NamespacesController : K3SControllerBase
         {
             namespaces = namespaces
                 .Where(n => n.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                            n.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
                             n.Labels.Any(l => l.Value.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
         }
@@ -194,10 +195,12 @@ public sealed class NamespacesController : K3SControllerBase
             return RedirectToAction(nameof(Details), new { name = model.NamespaceName });
         }
 
+        var existing = await _profiles.GetAsync(model.NamespaceName, cancellationToken).ConfigureAwait(false);
         await _profiles.UpsertAsync(
             new NamespaceProfile
             {
                 NamespaceName = model.NamespaceName,
+                Alias = existing?.Alias,
                 Owner = model.Owner,
                 Environment = model.Environment,
                 Description = model.Description,
@@ -206,6 +209,35 @@ public sealed class NamespacesController : K3SControllerBase
             cancellationToken).ConfigureAwait(false);
 
         Flash(Alert.Success("Namespace metadata saved."));
+        return RedirectToAction(nameof(Details), new { name = model.NamespaceName });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveAlias(NamespaceAliasEditModel model, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        if (string.IsNullOrWhiteSpace(model.NamespaceName)) return BadRequest();
+
+        if (!_persistence.Enabled)
+        {
+            Flash(Alert.Warning("A database connection is needed to save a namespace alias."));
+        }
+        else if (!ModelState.IsValid)
+        {
+            Flash(Alert.Danger("The alias must be 128 characters or fewer."));
+        }
+        else
+        {
+            var profile = await _profiles.GetAsync(model.NamespaceName, cancellationToken).ConfigureAwait(false)
+                ?? new NamespaceProfile { NamespaceName = model.NamespaceName };
+            await _profiles.UpsertAsync(profile with
+            {
+                Alias = string.IsNullOrWhiteSpace(model.Alias) ? null : model.Alias.Trim()
+            }, cancellationToken).ConfigureAwait(false);
+            Flash(Alert.Success("Namespace alias saved."));
+        }
+
         return RedirectToAction(nameof(Details), new { name = model.NamespaceName });
     }
 

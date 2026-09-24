@@ -60,6 +60,16 @@ public sealed class NamespaceCreateModel
     public string? Description { get; set; }
 }
 
+public sealed class NamespaceAliasEditModel
+{
+    [Required]
+    [StringLength(253)]
+    public string NamespaceName { get; set; } = string.Empty;
+
+    [StringLength(128)]
+    public string? Alias { get; set; }
+}
+
 public sealed class NamespaceProfileEditModel
 {
     public string NamespaceName { get; set; } = string.Empty;

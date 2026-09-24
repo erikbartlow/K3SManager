@@ -13,6 +13,9 @@ public sealed class NamespaceProfileEntity
     [DataColumn("NamespaceName", DbType.String, 253)]
     public string NamespaceName { get; set; } = string.Empty;
 
+    [DataColumn("Alias", DbType.String, 128, DataColumnOptions.AllowNull | DataColumnOptions.IsNullableType)]
+    public string? Alias { get; set; }
+
     [DataColumn("Owner", DbType.String, 128, DataColumnOptions.AllowNull | DataColumnOptions.IsNullableType)]
     public string? Owner { get; set; }
 

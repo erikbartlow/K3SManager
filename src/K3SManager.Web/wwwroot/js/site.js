@@ -1,6 +1,27 @@
 (function () {
     "use strict";
 
+    var aliasToggle = document.getElementById("edit-namespace-alias");
+    var aliasForm = document.getElementById("namespace-alias-form");
+    if (aliasToggle && aliasForm) {
+        function closeAliasEditor() {
+            aliasForm.reset();
+            aliasForm.hidden = true;
+            aliasToggle.setAttribute("aria-expanded", "false");
+            aliasToggle.focus();
+        }
+        aliasToggle.addEventListener("click", function () {
+            if (!aliasForm.hidden) { closeAliasEditor(); return; }
+            aliasForm.hidden = false;
+            aliasToggle.setAttribute("aria-expanded", "true");
+            document.getElementById("namespace-alias").focus();
+        });
+        document.getElementById("cancel-namespace-alias").addEventListener("click", closeAliasEditor);
+        aliasForm.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") { event.preventDefault(); closeAliasEditor(); }
+        });
+    }
+
     var navToggle = document.querySelector(".mobile-nav-toggle");
     if (navToggle) {
         var masthead = document.querySelector(".masthead");
