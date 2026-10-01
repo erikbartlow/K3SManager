@@ -171,6 +171,23 @@ main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 72px; }
 .page-head p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
 .page-head__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+.refresh-progress {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    vertical-align: middle;
+    border: 2px solid var(--muted);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: refresh-spin 0.8s linear infinite;
+}
+.refresh-progress[hidden] { display: none; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .refresh-progress { animation: none; }
+}
+
 .eyebrow {
     font-family: var(--mono);
     font-size: 12px;

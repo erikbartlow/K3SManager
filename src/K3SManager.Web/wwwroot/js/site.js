@@ -46,13 +46,47 @@
         mobileNavigation.addEventListener("change", function () { setNavigationOpen(false); });
     }
 
-    // Auto-refresh, driven by the data attribute the dashboard layout writes.
-    var refresh = document.body.getAttribute("data-refresh-seconds");
-    var seconds = refresh ? parseInt(refresh, 10) : 0;
-    if (seconds > 0) {
-        var timer = window.setTimeout(function () { window.location.reload(); }, seconds * 1000);
-        // Do not reload out from under someone filling in a form.
-        document.addEventListener("input", function () { window.clearTimeout(timer); }, { once: true });
+    // Fetch server-rendered dashboard content without navigating or replacing the layout.
+    var dashboard = document.getElementById("dashboard-content");
+    if (dashboard && window.jQuery) {
+        var $ = window.jQuery;
+        function setRefreshing(refreshing) {
+            var indicator = dashboard.querySelector(".refresh-progress");
+            if (indicator) { indicator.hidden = !refreshing; }
+            dashboard.setAttribute("aria-busy", String(refreshing));
+        }
+        function scheduleRefresh() {
+            var seconds = parseInt(dashboard.getAttribute("data-refresh-seconds"), 10);
+            if (!(seconds > 0)) { return; }
+            window.setTimeout(refreshDashboard, seconds * 1000);
+        }
+        function refreshDashboard() {
+            // Keep keyboard focus and any interaction in the dashboard undisturbed.
+            if (document.hidden || dashboard.contains(document.activeElement)) {
+                scheduleRefresh();
+                return;
+            }
+            setRefreshing(true);
+            $.ajax({
+                url: dashboard.getAttribute("data-refresh-url"),
+                dataType: "html",
+                cache: false,
+                timeout: 30000
+            }).done(function (html) {
+                var updated = $( $.parseHTML(html) ).filter("#dashboard-content");
+                // Login redirects and unexpected responses must not replace the dashboard.
+                if (updated.length !== 1 || dashboard.contains(document.activeElement)) { return; }
+                var scrollX = window.scrollX;
+                var scrollY = window.scrollY;
+                dashboard.innerHTML = updated[0].innerHTML;
+                dashboard.setAttribute("data-refresh-seconds", updated.attr("data-refresh-seconds"));
+                window.scrollTo(scrollX, scrollY);
+            }).always(function () {
+                setRefreshing(false);
+                scheduleRefresh();
+            });
+        }
+        scheduleRefresh();
     }
 
     // Client-side table filter for the namespace and node lists.

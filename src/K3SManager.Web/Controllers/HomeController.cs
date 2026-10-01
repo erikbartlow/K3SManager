@@ -66,6 +66,11 @@ public sealed class HomeController : K3SControllerBase
 
         _logger.LogDebug("Dashboard rendered for {NodeCount} nodes", model.Nodes.Count);
 
+        if (string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+        {
+            return PartialView("_Dashboard", model);
+        }
+
         return View(model);
     }
 
